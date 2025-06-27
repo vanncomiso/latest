@@ -227,7 +227,8 @@ export default function ChatPage() {
     window.location.href = '/admin'
   }
 
-  const renderCreateView = () => (
+  const renderCreateView = () => {
+    return (
     <div className="flex items-center justify-center h-full">
       <div className="text-center max-w-md">
         <div className="w-16 h-16 bg-sidebar-accent rounded-full flex items-center justify-center mx-auto mb-4">
@@ -246,7 +247,8 @@ export default function ChatPage() {
         </Button>
       </div>
     </div>
-  )
+    )
+  }
 
   const renderDiscoverView = () => {
     if (loading) {
