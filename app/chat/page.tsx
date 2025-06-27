@@ -245,7 +245,7 @@ export default function ChatPage() {
           Go to Admin Panel
         </Button>
       </div>
-    </div>
+    )
   )
 
   const renderDiscoverView = () => {
