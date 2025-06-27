@@ -87,31 +87,19 @@ export default function ChatPage() {
         setLoading(true)
         setError(null)
 
-        // Fetch only public projects with their creator profiles
-        // Note: This query should work for both authenticated and anonymous users
+        // Fetch only public projects
         const { data, error: fetchError } = await supabase
           .from('projects')
-          .select(`
-            *,
-            profiles (
-              id,
-              email,
-              full_name,
-              avatar_url
-            )
-          `)
+          .select('*')
           .eq('is_public', true)
           .order('created_at', { ascending: false })
 
         if (fetchError) {
-          console.error('Error fetching public projects:', fetchError)
           throw fetchError
         }
 
-        console.log('Fetched public projects:', data)
         setProjects(data || [])
       } catch (err) {
-        console.error('Failed to fetch projects:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch projects')
       } finally {
         setLoading(false)
@@ -123,108 +111,23 @@ export default function ChatPage() {
     }
   }, [currentView])
 
-  // Helper function to get category from project description or plan
-  const getProjectCategory = (project: Project) => {
-    const description = project.description.toLowerCase()
-    const name = project.name.toLowerCase()
+  const filteredProjects = React.useMemo(() => {
+    let filtered = projects
     
-    if (description.includes('business') || description.includes('enterprise') || name.includes('business')) return 'Business'
-    if (description.includes('education') || description.includes('learn') || name.includes('education')) return 'Education'
-    if (description.includes('health') || description.includes('wellness') || name.includes('health')) return 'Health'
-    if (description.includes('creative') || description.includes('art') || name.includes('creative')) return 'Creative'
-    if (description.includes('tech') || description.includes('api') || name.includes('tech')) return 'Technology'
-    if (description.includes('game') || description.includes('fun') || name.includes('entertainment')) return 'Entertainment'
-    
-    return 'Other'
-  }
-
-  // Helper function to generate avatar emoji based on category
-  const getProjectAvatar = (project: Project) => {
-    const category = getProjectCategory(project)
-    const avatars = {
-      'Business': '💼',
-      'Education': '📚',
-      'Health': '🏥',
-      'Creative': '🎨',
-      'Technology': '💻',
-      'Entertainment': '🎮',
-      'Other': '🤖'
-    }
-    return avatars[category as keyof typeof avatars] || '🤖'
-  }
-
-  // Helper function to get color based on category
-  const getProjectColor = (project: Project) => {
-    const category = getProjectCategory(project)
-    const colors = {
-      'Business': 'bg-blue-500',
-      'Education': 'bg-purple-500',
-      'Health': 'bg-green-500',
-      'Creative': 'bg-pink-500',
-      'Technology': 'bg-indigo-500',
-      'Entertainment': 'bg-orange-500',
-      'Other': 'bg-gray-500'
-    }
-    return colors[category as keyof typeof colors] || 'bg-gray-500'
-  }
-
-  const filteredBots = React.useMemo(() => {
-    if (loading || !projects.length) return []
-    
-    let projectsToFilter = projects.map((project, index) => ({
-      id: project.id,
-      name: project.name,
-      description: project.description,
-      creator: project.profiles?.full_name || project.profiles?.email?.split('@')[0] || 'Anonymous',
-      authorAvatar: getProjectAvatar(project),
-      category: getProjectCategory(project),
-      rating: 4.0 + Math.random() * 1, // Random rating between 4.0-5.0
-      conversations: Math.floor(Math.random() * 10000) + 1000,
-      users: Math.floor(Math.random() * 2000) + 100,
-      tags: [getProjectCategory(project), project.plan.charAt(0).toUpperCase() + project.plan.slice(1)],
-      featured: index < 3, // First 3 projects are featured
-      trending: Math.random() > 0.7, // 30% chance of being trending
-      slug: project.custom_slug || project.slug,
-      isPro: project.plan !== 'personal',
-      preview: {
-        imageUrl: projectImages[index % projectImages.length],
-        textColor: "text-white",
-        content: getProjectAvatar(project)
-      }
-    }))
-
-    // Apply filter
-    if (activeFilter === "Featured") {
-      projectsToFilter = projectsToFilter.filter(project => project.featured)
-    } else if (activeFilter === "Trending") {
-      projectsToFilter = projectsToFilter.filter(project => project.trending)
-    } else if (activeFilter === "Most Popular") {
-      projectsToFilter = [...projectsToFilter].sort((a, b) => b.users - a.users)
-    } else if (activeFilter === "Top Rated") {
-      projectsToFilter = [...projectsToFilter].sort((a, b) => b.rating - a.rating)
-    }
-
-    // Apply category filter
-    if (selectedCategory !== "All Categories") {
-      projectsToFilter = projectsToFilter.filter(project => project.category === selectedCategory)
-    }
-
     // Apply search filter
     if (searchTerm) {
-      projectsToFilter = projectsToFilter.filter(project => 
+      filtered = filtered.filter(project => 
         project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.creator.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        project.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+        project.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
-    return projectsToFilter
-  }, [searchTerm, selectedCategory, activeFilter, projects, loading])
+    return filtered
+  }, [searchTerm, projects])
 
-  const handleProjectClick = (project: typeof filteredBots[0]) => {
+  const handleProjectClick = (project: Project) => {
     // Navigate to individual chat with this project
-    window.location.href = `/chat/${project.slug}`
+    window.location.href = `/chat/${project.custom_slug || project.slug}`
   }
 
   const handleBackToAdmin = () => {
@@ -271,16 +174,7 @@ export default function ChatPage() {
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <h2 className="text-xl font-semibold text-sidebar-foreground mb-2">Error</h2>
-            <p className="text-sidebar-foreground/70 mb-4">
-              {error}
-            </p>
-            <details className="text-left text-xs text-sidebar-foreground/60 mb-4">
-              <summary className="cursor-pointer">Technical Details</summary>
-              <p className="mt-2">
-                This error occurred while trying to fetch public chatbots. 
-                This might be due to database permissions or network issues.
-              </p>
-            </details>
+            <p className="text-sidebar-foreground/70 mb-4">{error}</p>
             <Button
               onClick={() => window.location.reload()}
               className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
@@ -301,16 +195,16 @@ export default function ChatPage() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-medium text-white mb-2">
-                    Discover AI Chatbots
+                    Discover Public Projects
                   </h1>
                   <p className="text-gray-400">
-                    Explore our library of public AI chatbots created by the community
+                    Explore public projects created by the community
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
                     <SparklesIcon className="h-3 w-3 mr-1" />
-                    {projects.length} Bots Available
+                    {projects.length} Projects Available
                   </Badge>
                 </div>
               </div>
@@ -319,113 +213,32 @@ export default function ChatPage() {
               <div className="relative w-full max-w-2xl mx-auto mb-6">
                 <SearchIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-sidebar-foreground/40" />
                 <Input
-                  placeholder="Search chatbots, creators, or categories..."
+                  placeholder="Search projects..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-12 pr-4 py-3 bg-sidebar-accent border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
-              {/* Filter Tabs */}
-              <div className="flex items-center gap-4 mb-6 overflow-x-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-2 bg-sidebar-accent border-sidebar-border text-sidebar-foreground hover:bg-sidebar-accent/80 flex-shrink-0"
-                >
-                  <FilterIcon className="h-4 w-4" />
-                  Filters
-                </Button>
-                
-                <div className="flex items-center gap-2 overflow-x-auto">
-                  {filterTabs.map((tab) => (
-                    <Button
-                      key={tab.name}
-                      variant={activeFilter === tab.name ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => setActiveFilter(tab.name)}
-                      className={`whitespace-nowrap flex-shrink-0 ${
-                        activeFilter === tab.name
-                          ? "bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
-                          : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                      }`}
-                    >
-                      {tab.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Category Filters */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {categories.map((category) => (
-                  <Button
-                    key={category}
-                    variant={selectedCategory === category ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setSelectedCategory(category)}
-                    className={`whitespace-nowrap flex-shrink-0 ${
-                      selectedCategory === category
-                        ? "bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
-                        : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                    }`}
-                  >
-                    {category}
-                  </Button>
-                ))}
-              </div>
             </div>
 
-            {/* Results Header */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-bold text-sidebar-foreground">
-                  {activeFilter} Chatbots
-                </h2>
-                <span className="text-sidebar-foreground/60 text-sm">
-                  {filteredBots.length} results
-                </span>
-              </div>
-              <p className="text-sidebar-foreground/60 text-sm">
-                {activeFilter === "Featured" 
-                  ? "Hand-picked chatbots showcasing the best of our community"
-                  : `Discover amazing ${activeFilter.toLowerCase()} chatbots from our community`
-                }
-              </p>
-            </div>
-
-            {/* Chatbots Grid */}
-            {filteredBots.length > 0 ? (
+            {/* Projects Grid */}
+            {filteredProjects.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                {filteredBots.map((project) => (
+                {filteredProjects.map((project, index) => (
                   <Card
                     key={project.id}
                     className="group bg-sidebar-accent border-sidebar-border hover:border-sidebar-foreground/20 transition-all duration-200 cursor-pointer overflow-hidden"
                     onClick={() => handleProjectClick(project)}
                   >
-                    {/* Project Preview with Image */}
+                    {/* Project Preview */}
                     <div className="aspect-[4/3] relative overflow-hidden">
                       <img
-                        src={project.preview.imageUrl}
+                        src={projectImages[index % projectImages.length]}
                         alt={project.name}
                         className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                         loading="lazy"
                       />
-                      
-                      {/* Badges */}
-                      <div className="absolute top-3 left-3 flex gap-2">
-                        {project.featured && (
-                          <Badge className="bg-yellow-500 text-yellow-900 text-xs">
-                            Featured
-                          </Badge>
-                        )}
-                        {project.trending && (
-                          <Badge className="bg-red-500 text-white text-xs">
-                            <TrendingUpIcon className="h-3 w-3 mr-1" />
-                            Trending
-                          </Badge>
-                        )}
-                      </div>
                       
                       {/* Hover overlay */}
                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -444,52 +257,37 @@ export default function ChatPage() {
 
                     {/* Project Info */}
                     <div className="p-6">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-xs text-white font-medium flex-shrink-0">
-                            {project.authorAvatar}
+                            🚀
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-sidebar-foreground/70 truncate">
-                              {project.creator}
+                              Public Project
                             </p>
-                            {project.isPro && (
-                              <Badge variant="secondary" className="text-xs mt-1 bg-sidebar-foreground/10 text-sidebar-foreground/70">
-                                PRO
-                              </Badge>
-                            )}
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <StarIcon className="h-3 w-3 text-yellow-500 fill-current" />
-                          <span className="text-xs text-sidebar-foreground/70">{project.rating.toFixed(1)}</span>
                         </div>
                       </div>
 
                       {/* Project Title */}
-                      <h3 className="text-sm font-medium text-sidebar-foreground mb-2 line-clamp-1">
+                      <h3 className="text-lg font-semibold text-sidebar-foreground mb-2 line-clamp-1">
                         {project.name}
                       </h3>
 
-                      {/* Tags */}
-                      {project.category && (
-                        <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20 mb-4">
-                          {project.category}
-                        </Badge>
-                      )}
+                      {/* Description */}
+                      <p className="text-sm text-sidebar-foreground/70 mb-4 line-clamp-2">
+                        {project.description}
+                      </p>
 
-                      {/* Stats */}
-                      <div className="flex items-center justify-between text-xs text-sidebar-foreground/60">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <MessageSquareIcon className="h-3 w-3" />
-                            <span>{project.conversations.toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <UsersIcon className="h-3 w-3" />
-                            <span>{project.users.toLocaleString()}</span>
-                          </div>
-                        </div>
+                      {/* Plan Badge */}
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-xs bg-sidebar-foreground/10 text-sidebar-foreground/70 border-sidebar-foreground/20">
+                          {project.plan.charAt(0).toUpperCase() + project.plan.slice(1)}
+                        </Badge>
+                        <span className="text-xs text-sidebar-foreground/60">
+                          {new Date(project.created_at).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
                   </Card>
@@ -499,12 +297,12 @@ export default function ChatPage() {
               <div className="text-center py-12">
                 <div className="text-4xl mb-4">🔍</div>
                 <h3 className="text-sidebar-foreground text-lg font-semibold mb-2">
-                  {projects.length === 0 ? 'No public chatbots yet' : 'No chatbots found'}
+                  {projects.length === 0 ? 'No public projects yet' : 'No projects found'}
                 </h3>
                 <p className="text-sidebar-foreground/70 mb-4">
                   {projects.length === 0 
-                    ? 'Be the first to create a public chatbot for the community!'
-                    : 'No chatbots match your current search and filter criteria.'
+                    ? 'Be the first to create a public project for the community!'
+                    : 'No projects match your current search criteria.'
                   }
                 </p>
                 {projects.length === 0 ? (
@@ -512,14 +310,12 @@ export default function ChatPage() {
                     onClick={handleBackToAdmin}
                     className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
                   >
-                    Create Your First Bot
+                    Create Your First Project
                   </Button>
                 ) : (
                   <Button
                     onClick={() => {
                       setSearchTerm("")
-                      setSelectedCategory("All Categories")
-                      setActiveFilter("Featured")
                     }}
                     className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
                   >
