@@ -88,6 +88,7 @@ export default function ChatPage() {
         setError(null)
 
         // Fetch only public projects with their creator profiles
+        // Note: This query should work for both authenticated and anonymous users
         const { data, error: fetchError } = await supabase
           .from('projects')
           .select(`
@@ -103,11 +104,14 @@ export default function ChatPage() {
           .order('created_at', { ascending: false })
 
         if (fetchError) {
+          console.error('Error fetching public projects:', fetchError)
           throw fetchError
         }
 
+        console.log('Fetched public projects:', data)
         setProjects(data || [])
       } catch (err) {
+        console.error('Failed to fetch projects:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch projects')
       } finally {
         setLoading(false)
@@ -267,7 +271,16 @@ export default function ChatPage() {
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
             <h2 className="text-xl font-semibold text-sidebar-foreground mb-2">Error</h2>
-            <p className="text-sidebar-foreground/70 mb-4">{error}</p>
+            <p className="text-sidebar-foreground/70 mb-4">
+              {error}
+            </p>
+            <details className="text-left text-xs text-sidebar-foreground/60 mb-4">
+              <summary className="cursor-pointer">Technical Details</summary>
+              <p className="mt-2">
+                This error occurred while trying to fetch public chatbots. 
+                This might be due to database permissions or network issues.
+              </p>
+            </details>
             <Button
               onClick={() => window.location.reload()}
               className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
