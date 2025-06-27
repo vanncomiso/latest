@@ -1,19 +1,32 @@
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
-import { ScrollTrigger } from "gsap/all";
+import React, { useEffect, useRef, useState } from "react";
 import { TiLocationArrow } from "react-icons/ti";
 import { FaDiscord, FaTwitter, FaYoutube, FaMedium } from "react-icons/fa";
-import { useEffect, useRef, useState } from "react";
-import { useWindowScroll } from "react-use";
 import clsx from "clsx";
 
-gsap.registerPlugin(ScrollTrigger);
+// Placeholder for GSAP - we'll use CSS animations instead for now
+const gsap = {
+  to: () => {},
+  set: () => {},
+  from: () => {},
+  timeline: () => ({ to: () => {}, from: () => {} }),
+  context: () => ({ revert: () => {} }),
+  registerPlugin: () => {}
+};
+
+const ScrollTrigger = {};
+
+// Mock useGSAP hook
+const useGSAP = () => {};
+
+// Mock useWindowScroll hook
+const useWindowScroll = () => ({ y: 0 });
 
 // Button Component
-const Button = ({ id, title, rightIcon, leftIcon, containerClass }) => {
+const Button = ({ id, title, rightIcon, leftIcon, containerClass, onClick }) => {
   return (
     <button
       id={id}
+      onClick={onClick}
       className={clsx(
         "group relative z-10 w-fit cursor-pointer overflow-hidden rounded-full bg-violet-50 px-7 py-3 text-black",
         containerClass
@@ -36,37 +49,11 @@ const Button = ({ id, title, rightIcon, leftIcon, containerClass }) => {
 };
 
 // AnimatedTitle Component
-const AnimatedTitle = ({ title, containerClass }) => {
+const AnimatedTitle = ({ title, containerClass, className }) => {
   const containerRef = useRef(null);
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      const titleAnimation = gsap.timeline({
-        scrollTrigger: {
-          trigger: containerRef.current,
-          start: "100 bottom",
-          end: "center bottom",
-          toggleActions: "play none none reverse",
-        },
-      });
-
-      titleAnimation.to(
-        ".animated-word",
-        {
-          opacity: 1,
-          transform: "translate3d(0, 0, 0) rotateY(0deg) rotateX(0deg)",
-          ease: "power2.inOut",
-          stagger: 0.02,
-        },
-        0
-      );
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
-    <div ref={containerRef} className={clsx("animated-title", containerClass)}>
+    <div ref={containerRef} className={clsx("animated-title", containerClass, className)}>
       {title.split("<br />").map((line, index) => (
         <div
           key={index}
@@ -75,7 +62,7 @@ const AnimatedTitle = ({ title, containerClass }) => {
           {line.split(" ").map((word, idx) => (
             <span
               key={idx}
-              className="animated-word"
+              className="animated-word opacity-100"
               dangerouslySetInnerHTML={{ __html: word }}
             />
           ))}
@@ -87,61 +74,12 @@ const AnimatedTitle = ({ title, containerClass }) => {
 
 // VideoPreview Component
 const VideoPreview = ({ children }) => {
-  const [isHovering, setIsHovering] = useState(false);
   const sectionRef = useRef(null);
   const contentRef = useRef(null);
-
-  const handleMouseMove = ({ clientX, clientY, currentTarget }) => {
-    const rect = currentTarget.getBoundingClientRect();
-    const xOffset = clientX - (rect.left + rect.width / 2);
-    const yOffset = clientY - (rect.top + rect.height / 2);
-
-    if (isHovering) {
-      gsap.to(sectionRef.current, {
-        x: xOffset,
-        y: yOffset,
-        rotationY: xOffset / 2,
-        rotationX: -yOffset / 2,
-        transformPerspective: 500,
-        duration: 1,
-        ease: "power1.out",
-      });
-
-      gsap.to(contentRef.current, {
-        x: -xOffset,
-        y: -yOffset,
-        duration: 1,
-        ease: "power1.out",
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (!isHovering) {
-      gsap.to(sectionRef.current, {
-        x: 0,
-        y: 0,
-        rotationY: 0,
-        rotationX: 0,
-        duration: 1,
-        ease: "power1.out",
-      });
-
-      gsap.to(contentRef.current, {
-        x: 0,
-        y: 0,
-        duration: 1,
-        ease: "power1.out",
-      });
-    }
-  }, [isHovering]);
 
   return (
     <section
       ref={sectionRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
       className="absolute z-50 size-full overflow-hidden rounded-lg"
       style={{ perspective: "500px" }}
     >
@@ -158,36 +96,12 @@ const VideoPreview = ({ children }) => {
 
 // BentoTilt Component
 const BentoTilt = ({ children, className = "" }) => {
-  const [transformStyle, setTransformStyle] = useState("");
   const itemRef = useRef(null);
-
-  const handleMouseMove = (event) => {
-    if (!itemRef.current) return;
-
-    const { left, top, width, height } =
-      itemRef.current.getBoundingClientRect();
-
-    const relativeX = (event.clientX - left) / width;
-    const relativeY = (event.clientY - top) / height;
-
-    const tiltX = (relativeY - 0.5) * 5;
-    const tiltY = (relativeX - 0.5) * -5;
-
-    const newTransform = `perspective(700px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(.95, .95, .95)`;
-    setTransformStyle(newTransform);
-  };
-
-  const handleMouseLeave = () => {
-    setTransformStyle("");
-  };
 
   return (
     <div
       ref={itemRef}
       className={className}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ transform: transformStyle }}
     >
       {children}
     </div>
@@ -196,32 +110,11 @@ const BentoTilt = ({ children, className = "" }) => {
 
 // BentoCard Component
 const BentoCard = ({ src, title, description, isComingSoon }) => {
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
-  const [hoverOpacity, setHoverOpacity] = useState(0);
   const hoverButtonRef = useRef(null);
 
-  const handleMouseMove = (event) => {
-    if (!hoverButtonRef.current) return;
-    const rect = hoverButtonRef.current.getBoundingClientRect();
-
-    setCursorPosition({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-    });
-  };
-
-  const handleMouseEnter = () => setHoverOpacity(1);
-  const handleMouseLeave = () => setHoverOpacity(0);
-
   return (
-    <div className="relative size-full">
-      <video
-        src={src}
-        loop
-        muted
-        autoPlay
-        className="absolute left-0 top-0 size-full object-cover object-center"
-      />
+      {/* Placeholder for video - using gradient background instead */}
+      <div className="absolute left-0 top-0 size-full bg-gradient-to-br from-purple-600 to-blue-600" />
       <div className="relative z-10 flex size-full flex-col justify-between p-5 text-blue-50">
         <div>
           <h1 className="bento-title special-font">{title}</h1>
@@ -233,18 +126,8 @@ const BentoCard = ({ src, title, description, isComingSoon }) => {
         {isComingSoon && (
           <div
             ref={hoverButtonRef}
-            onMouseMove={handleMouseMove}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
             className="border-hsla relative flex w-fit cursor-pointer items-center gap-1 overflow-hidden rounded-full bg-black px-5 py-2 text-xs uppercase text-white/20"
           >
-            <div
-              className="pointer-events-none absolute -inset-px opacity-0 transition duration-300"
-              style={{
-                opacity: hoverOpacity,
-                background: `radial-gradient(100px circle at ${cursorPosition.x}px ${cursorPosition.y}px, #656fe288, #00000026)`,
-              }}
-            />
             <TiLocationArrow className="relative z-20" />
             <p className="relative z-20">coming soon</p>
           </div>
@@ -257,18 +140,23 @@ const BentoCard = ({ src, title, description, isComingSoon }) => {
 // ImageClipBox Component
 const ImageClipBox = ({ src, clipClass }) => (
   <div className={clipClass}>
-    <img src={src} />
+    {/* Placeholder for images - using colored divs */}
+    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-purple-600" />
   </div>
 );
 
-// Main Single Page Component
-const SinglePage = () => {
+// Main Landing Page Component
+interface LandingPageProps {
+  onEnterApp: () => void;
+}
+
+const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
   // NavBar state
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [isIndicatorActive, setIsIndicatorActive] = useState(false);
   const audioElementRef = useRef(null);
   const navContainerRef = useRef(null);
-  const { y: currentScrollY } = useWindowScroll();
+  const currentScrollY = 0; // Mock scroll position
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -276,7 +164,7 @@ const SinglePage = () => {
   const [currentIndex, setCurrentIndex] = useState(1);
   const [hasClicked, setHasClicked] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [loadedVideos, setLoadedVideos] = useState(0);
+  const [loadedVideos, setLoadedVideos] = useState(4); // Mock all videos loaded
   const totalVideos = 4;
   const nextVdRef = useRef(null);
 
@@ -297,159 +185,25 @@ const SinglePage = () => {
     setIsIndicatorActive((prev) => !prev);
   };
 
-  // Hero functions
-  const handleVideoLoad = () => {
-    setLoadedVideos((prev) => prev + 1);
-  };
-
   const handleMiniVdClick = () => {
     setHasClicked(true);
     setCurrentIndex((prevIndex) => (prevIndex % totalVideos) + 1);
   };
 
-  const getVideoSrc = (index) => `videos/hero-${index}.mp4`;
+  // Mock video source
+  const getVideoSrc = (index) => `#video-${index}`;
 
   // Story functions
   const handleMouseMove = (e) => {
-    const { clientX, clientY } = e;
-    const element = frameRef.current;
-
-    if (!element) return;
-
-    const rect = element.getBoundingClientRect();
-    const xPos = clientX - rect.left;
-    const yPos = clientY - rect.top;
-
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-
-    const rotateX = ((yPos - centerY) / centerY) * -10;
-    const rotateY = ((xPos - centerX) / centerX) * 10;
-
-    gsap.to(element, {
-      duration: 0.3,
-      rotateX,
-      rotateY,
-      transformPerspective: 500,
-      ease: "power1.inOut",
-    });
+    // Simplified mouse interaction
   };
 
   const handleMouseLeave = () => {
-    const element = frameRef.current;
-
-    if (element) {
-      gsap.to(element, {
-        duration: 0.3,
-        rotateX: 0,
-        rotateY: 0,
-        ease: "power1.inOut",
-      });
-    }
+    // Simplified mouse interaction
   };
 
   // Effects
-  useEffect(() => {
-    if (isAudioPlaying) {
-      audioElementRef.current.play();
-    } else {
-      audioElementRef.current.pause();
-    }
-  }, [isAudioPlaying]);
-
-  useEffect(() => {
-    if (loadedVideos === totalVideos - 1) {
-      setLoading(false);
-    }
-  }, [loadedVideos]);
-
-  useEffect(() => {
-    if (currentScrollY === 0) {
-      setIsNavVisible(true);
-      navContainerRef.current.classList.remove("floating-nav");
-    } else if (currentScrollY > lastScrollY) {
-      setIsNavVisible(false);
-      navContainerRef.current.classList.add("floating-nav");
-    } else if (currentScrollY < lastScrollY) {
-      setIsNavVisible(true);
-      navContainerRef.current.classList.add("floating-nav");
-    }
-
-    setLastScrollY(currentScrollY);
-  }, [currentScrollY, lastScrollY]);
-
-  useEffect(() => {
-    gsap.to(navContainerRef.current, {
-      y: isNavVisible ? 0 : -100,
-      opacity: isNavVisible ? 1 : 0,
-      duration: 0.2,
-    });
-  }, [isNavVisible]);
-
-  // GSAP Animations
-  useGSAP(
-    () => {
-      if (hasClicked) {
-        gsap.set("#next-video", { visibility: "visible" });
-        gsap.to("#next-video", {
-          transformOrigin: "center center",
-          scale: 1,
-          width: "100%",
-          height: "100%",
-          duration: 1,
-          ease: "power1.inOut",
-          onStart: () => nextVdRef.current.play(),
-        });
-        gsap.from("#current-video", {
-          transformOrigin: "center center",
-          scale: 0,
-          duration: 1.5,
-          ease: "power1.inOut",
-        });
-      }
-    },
-    {
-      dependencies: [currentIndex],
-      revertOnUpdate: true,
-    }
-  );
-
-  useGSAP(() => {
-    gsap.set("#video-frame", {
-      clipPath: "polygon(14% 0, 72% 0, 88% 90%, 0 95%)",
-      borderRadius: "0% 0% 40% 10%",
-    });
-    gsap.from("#video-frame", {
-      clipPath: "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
-      borderRadius: "0% 0% 0% 0%",
-      ease: "power1.inOut",
-      scrollTrigger: {
-        trigger: "#video-frame",
-        start: "center center",
-        end: "bottom center",
-        scrub: true,
-      },
-    });
-  });
-
-  useGSAP(() => {
-    const clipAnimation = gsap.timeline({
-      scrollTrigger: {
-        trigger: "#clip",
-        start: "center center",
-        end: "+=800 center",
-        scrub: 0.5,
-        pin: true,
-        pinSpacing: true,
-      },
-    });
-
-    clipAnimation.to(".mask-clip-path", {
-      width: "100vw",
-      height: "100vh",
-      borderRadius: 0,
-    });
-  });
+  // Simplified effects without GSAP
 
   return (
     <main className="relative min-h-screen w-screen overflow-x-hidden">
@@ -461,7 +215,8 @@ const SinglePage = () => {
         <header className="absolute top-1/2 w-full -translate-y-1/2">
           <nav className="flex size-full items-center justify-between p-4">
             <div className="flex items-center gap-7">
-              <img src="/img/logo.png" alt="logo" className="w-10" />
+              {/* Placeholder logo */}
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg" />
               <Button
                 id="product-button"
                 title="Products"
@@ -487,12 +242,6 @@ const SinglePage = () => {
                 onClick={toggleAudioIndicator}
                 className="ml-10 flex items-center space-x-0.5"
               >
-                <audio
-                  ref={audioElementRef}
-                  className="hidden"
-                  src="/audio/loop.mp3"
-                  loop
-                />
                 {[1, 2, 3, 4].map((bar) => (
                   <div
                     key={bar}
@@ -533,38 +282,14 @@ const SinglePage = () => {
                   onClick={handleMiniVdClick}
                   className="origin-center scale-50 opacity-0 transition-all duration-500 ease-in hover:scale-100 hover:opacity-100"
                 >
-                  <video
-                    ref={nextVdRef}
-                    src={getVideoSrc((currentIndex % totalVideos) + 1)}
-                    loop
-                    muted
-                    id="current-video"
-                    className="size-64 origin-center scale-150 object-cover object-center"
-                    onLoadedData={handleVideoLoad}
-                  />
+                  {/* Placeholder for video */}
+                  <div className="size-64 origin-center scale-150 bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg" />
                 </div>
               </VideoPreview>
             </div>
 
-            <video
-              ref={nextVdRef}
-              src={getVideoSrc(currentIndex)}
-              loop
-              muted
-              id="next-video"
-              className="absolute-center invisible absolute z-20 size-64 object-cover object-center"
-              onLoadedData={handleVideoLoad}
-            />
-            <video
-              src={getVideoSrc(
-                currentIndex === totalVideos - 1 ? 1 : currentIndex
-              )}
-              autoPlay
-              loop
-              muted
-              className="absolute left-0 top-0 size-full object-cover object-center"
-              onLoadedData={handleVideoLoad}
-            />
+            {/* Placeholder for background video */}
+            <div className="absolute left-0 top-0 size-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900" />
           </div>
 
           <h1 className="special-font hero-heading absolute bottom-5 right-5 z-40 text-blue-75">
@@ -586,6 +311,7 @@ const SinglePage = () => {
                 title="Watch trailer"
                 leftIcon={<TiLocationArrow />}
                 containerClass="bg-yellow-300 flex-center gap-1"
+                onClick={onEnterApp}
               />
             </div>
           </div>
@@ -619,11 +345,8 @@ const SinglePage = () => {
 
         <div className="h-dvh w-screen" id="clip">
           <div className="mask-clip-path about-image">
-            <img
-              src="img/about.webp"
-              alt="Background"
-              className="absolute left-0 top-0 size-full object-cover"
-            />
+            {/* Placeholder for about image */}
+            <div className="absolute left-0 top-0 size-full bg-gradient-to-br from-green-400 to-blue-500" />
           </div>
         </div>
       </div>
@@ -706,13 +429,8 @@ const SinglePage = () => {
             </BentoTilt>
 
             <BentoTilt className="bento-tilt_2">
-              <video
-                src="videos/feature-5.mp4"
-                loop
-                muted
-                autoPlay
-                className="size-full object-cover object-center"
-              />
+              {/* Placeholder for feature video */}
+              <div className="size-full bg-gradient-to-br from-red-500 to-pink-600" />
             </BentoTilt>
           </div>
         </div>
@@ -740,9 +458,9 @@ const SinglePage = () => {
                     onMouseLeave={handleMouseLeave}
                     onMouseUp={handleMouseLeave}
                     onMouseEnter={handleMouseLeave}
-                    src="/img/entrance.webp"
                     alt="entrance.webp"
                     className="object-contain"
+                    src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect width='100%25' height='100%25' fill='%23667eea'/%3E%3C/svg%3E"
                   />
                 </div>
               </div>
@@ -787,6 +505,7 @@ const SinglePage = () => {
                 id="realm-btn"
                 title="discover prologue"
                 containerClass="mt-5"
+                onClick={onEnterApp}
               />
             </div>
           </div>
@@ -798,22 +517,22 @@ const SinglePage = () => {
         <div className="relative rounded-lg bg-black py-24 text-blue-50 sm:overflow-hidden">
           <div className="absolute -left-20 top-0 hidden h-full w-72 overflow-hidden sm:block lg:left-20 lg:w-96">
             <ImageClipBox
-              src="/img/contact-1.webp"
+              src="placeholder"
               clipClass="contact-clip-path-1"
             />
             <ImageClipBox
-              src="/img/contact-2.webp"
+              src="placeholder"
               clipClass="contact-clip-path-2 lg:translate-y-40 translate-y-60"
             />
           </div>
 
           <div className="absolute -top-40 left-20 w-60 sm:top-1/2 md:left-auto md:right-10 lg:top-20 lg:w-80">
             <ImageClipBox
-              src="/img/swordman-partial.webp"
+              src="placeholder"
               clipClass="absolute md:scale-125"
             />
             <ImageClipBox
-              src="/img/swordman.webp"
+              src="placeholder"
               clipClass="sword-man-clip-path md:scale-125"
             />
           </div>
@@ -828,7 +547,11 @@ const SinglePage = () => {
               className="special-font !md:text-[6.2rem] w-full font-zentry !text-5xl !font-black !leading-[.9]"
             />
 
-            <Button title="contact us" containerClass="mt-10 cursor-pointer" />
+            <Button 
+              title="contact us" 
+              containerClass="mt-10 cursor-pointer"
+              onClick={onEnterApp}
+            />
           </div>
         </div>
       </div>
@@ -866,5 +589,4 @@ const SinglePage = () => {
   );
 };
 
-export default 
-  SinglePage;
+export default LandingPage;
