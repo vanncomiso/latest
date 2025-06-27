@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { LandingPage } from "./landing/landing-page"
+import LandingPage from "./landing/landing-page"
 import { AuthPage } from "./auth/auth-page"
 
 interface ProtectedRouteProps {
