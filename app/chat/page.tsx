@@ -245,7 +245,7 @@ export default function ChatPage() {
           Go to Admin Panel
         </Button>
       </div>
-    )
+    </div>
   )
 
   const renderDiscoverView = () => {
@@ -456,7 +456,6 @@ export default function ChatPage() {
                         {project.name}
                       </h3>
 
-
                       {/* Tags */}
                       {project.category && (
                         <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-500 border-blue-500/20 mb-4">
@@ -483,36 +482,35 @@ export default function ChatPage() {
               </div>
             ) : (
               <div className="text-center py-12">
-                  <div className="text-4xl mb-4">🔍</div>
-                  <h3 className="text-sidebar-foreground text-lg font-semibold mb-2">
-                    {projects.length === 0 ? 'No public chatbots yet' : 'No chatbots found'}
-                  </h3>
-                  <p className="text-sidebar-foreground/70 mb-4">
-                    {projects.length === 0 
-                      ? 'Be the first to create a public chatbot for the community!'
-                      : 'No chatbots match your current search and filter criteria.'
-                    }
-                  </p>
-                  {projects.length === 0 ? (
-                    <Button
-                      onClick={handleBackToAdmin}
-                      className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
-                    >
-                      Create Your First Bot
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => {
-                        setSearchTerm("")
-                        setSelectedCategory("All Categories")
-                        setActiveFilter("Featured")
-                      }}
-                      className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
-                    >
-                      Clear Filters
-                    </Button>
-                  )}
-                </div>
+                <div className="text-4xl mb-4">🔍</div>
+                <h3 className="text-sidebar-foreground text-lg font-semibold mb-2">
+                  {projects.length === 0 ? 'No public chatbots yet' : 'No chatbots found'}
+                </h3>
+                <p className="text-sidebar-foreground/70 mb-4">
+                  {projects.length === 0 
+                    ? 'Be the first to create a public chatbot for the community!'
+                    : 'No chatbots match your current search and filter criteria.'
+                  }
+                </p>
+                {projects.length === 0 ? (
+                  <Button
+                    onClick={handleBackToAdmin}
+                    className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
+                  >
+                    Create Your First Bot
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => {
+                      setSearchTerm("")
+                      setSelectedCategory("All Categories")
+                      setActiveFilter("Featured")
+                    }}
+                    className="bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90"
+                  >
+                    Clear Filters
+                  </Button>
+                )}
               </div>
             )}
           </div>
