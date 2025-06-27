@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
+import { LandingPage } from "./landing/landing-page"
 import { AuthPage } from "./auth/auth-page"
 
 interface ProtectedRouteProps {
@@ -12,6 +13,7 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
+  const [showLanding, setShowLanding] = useState(true)
   const [authDismissed, setAuthDismissed] = useState(false)
 
   if (loading) {
@@ -28,6 +30,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // If user is authenticated, show the app
   if (user) {
     return <>{children}</>
+  }
+
+  // Show landing page first
+  if (showLanding && !showAuth) {
+    return (
+      <LandingPage 
+        onEnterApp={() => setShowLanding(false)} 
+      />
+    )
   }
 
   // If auth was dismissed, show the app without authentication
